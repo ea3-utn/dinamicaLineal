@@ -13,12 +13,21 @@ function [KG,MG]=condContorno(KG,MG,CCx,CCy,CCw,GL,codigo)
 
 	 case 1
 
-	   CONDICIONES=sort([2*CCx(:,1)-1;2*CCy(:,1)]);
+	   CONDICIONES=double(sort([2*CCx(:,1)-1;2*CCy(:,1)]));
 	   
 	 case 2
 
-	   CONDICIONES=sort([3*CCx(:,1)-2;3*CCy(:,1)-1;3*CCw(:,1)]);
+	   if (isempty(CCw)==0)
+	   
+	     CONDICIONES=double(sort([3*CCx(:,1)-2;3*CCy(:,1)-1;3*CCw(:,1)]));
 
+	   else
+
+	     CONDICIONES=double(sort([3*CCx(:,1)-2;3*CCy(:,1)-1]));
+
+	   endif
+	   
+	     
   endswitch
   
   CONDICIONES( ~any(CONDICIONES,2), : ) = [];

@@ -4,7 +4,7 @@
 ##   / __/ / /| |  / / / / / /    |
 ##  / /___/ ___ |_/ /_/ /_/ /     |    ANALISIS LINEAL DINAMICO
 ## /_____/_/  |_/___/___/___/     |
-##                                |    elementoBarra: Matrices Caracteristicas
+##                                |    elementoBarra: Matrices Caracteristicas y Condiciones de contorno
 ##                                |                     
 ##---------CICLO LECTIVO 2020----------------------------------------------------------------
 

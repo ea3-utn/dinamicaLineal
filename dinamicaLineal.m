@@ -15,7 +15,9 @@ pkg load symbolic; # Carga de paquete que me permite hacer operaciones algebraic
 
 warning ('off','OctSymPy:sym:rationalapprox');
 
-syms x
+syms x t tau
+
+T=linspace(0,0.05,500);
 
 ## DECLARACIONES
 
@@ -25,34 +27,34 @@ color=["k","r","g","b","m","c","k","r","g","b","m","c"];
 
 ## CARACTERISTICAS DEL MATERIAL
 
-rho=7800;
+b=1;
 
-A=0.0079;
+E=100;
 
-I=4.9087e-6;
+A=3;
 
-E=2.1e11;
+L=2;
 
-L=2.25;
+RHO=7;
+
+I=100;
 
 ##---- CARACTERISTICAS FISICO-GEOMETRICAS
 
 
-NODO=[0 0;0 2*L;L 2*L;L L;L 0]; % [Xi Yi] en fila i define nodo i
+NODO=[0 0;L/2 0;L 0]; % [Xi Yi] en fila i define nodo i
 
-ELEMENTO=[1 2 E A rho I;2 3 E A rho I;3 4 E A rho I;4 5 E A rho I;2 4 E A rho I;1 4 E A rho I]; % [NodoInicial NodoFinal E A Rho I] 
+ELEMENTO=[1 2 E A RHO I;2 3 E A RHO I]; % [NodoInicial NodoFinal E A I] en fila i define ubicacion de la viga "i-esima" y sus propiedades
 
-tipoElemento=1; 
+tipoElemento=2; 
 
-#########%  CONDICIONES DE CONTORNO Y CARGAS ---> G L O B A L E S
+#########%  CONDICIONES DE CONTORNO Y DESPLAZAMIENTOS ---> G L O B A L E S
 
-%-------- COND./CARGAS NULAS SE DEJAN V A C I A S = [] -------------#
+CCx=[1 0;3 0]; % [Nodo Ux] define condicion de contorno en nodo i
 
-CCx=[5 0]; % [Nodo Ux] define condicion de contorno en nodo i
+CCy=[1 (-2e5)*tau^2;3 sym(0)]; % [Nodo Uy] define condicion de contorno en nodo i 
 
-CCy=[1 0;5 0]; % [Nodo Uy] define condicion de contorno en nodo i 
-
-CCw=[0 0]; % [Nodo Wz] define condicion de contorno en nodo i 
+CCw=[1 0;3 0]; % [Nodo Wz] define condicion de contorno en nodo i 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%  SCRIPT 
@@ -68,14 +70,71 @@ GL=size(NODO,1)*matrizElementos(tipoElemento); % Cant. de grados de libertad glo
 
 [KG,MG]=rigidezGlobal(ELEMENTO,NODO,GL,tipoElemento);
 
-[KG,MG]=condContorno(KG,MG,CCx,CCy,CCw,GL,tipoElemento); %Aplicacion de las condiciones de contorno
+[Px]=cargaEquivalente(KG,MG,CCx,CCy,CCw,GL,tipoElemento);
+
+[KG,MG]=condContorno(KG,MG,CCx,CCy,CCw,GL,tipoElemento); % Aplicacion de las condiciones de contorno
+
+GLNN=size(KG,1);
 
 ########### AUTOVECT/AUTOVALORES -->  W2  ###############
 
 [phi,w2]=eig(inv(MG)*KG);
 
+frecuenciasNaturales=sort(sqrt(w2)/(2*pi)*ones(GLNN,1));
 
-sqrt(w2)/(2*pi)
+printf("\nTotal %d Frecuencias Naturales:\n\n",GLNN)
+
+printf("%d Hz\n",frecuenciasNaturales)
+
+########### SUPERPOSICION MODAL ##########################
 
 
+U=zeros(size(frecuenciasNaturales,1),size(T,2));
 
+for i=1:GLNN 
+  
+  
+	     #----- PROYECCIONES ------------------------------------#
+
+  
+  
+  #y0=(phi(:,i)'*Cinit)/(phi(:,i)'*phi(:,i)) # Proyeccion de la condicion inicial de la funcion del tiempo del modo
+
+  y0=0;
+  
+  Mr=phi(:,i)'*MG*phi(:,i); # Proyeccion modal de la masa
+  
+  Kr=phi(:,i)'*KG*phi(:,i); # Proyeccion modal de la rigidez
+  
+  Pr=phi(:,i)'*Px; # Proyeccion modal de la carga
+
+	     # ---- SOLUCION DE LA INTEGRAL DE DUHAMEL --------------#
+  
+  yr=function_handle(y0*cos((sqrt(Kr/Mr))*t)+(1/(Mr*(sqrt(Kr/Mr))))*int(Pr*sin((sqrt(Kr/Mr))*(t-tau)),tau,0,t));
+
+
+             # ---- PROYECCION DEL DESPLAZAMIENTO TEMPORAL ----------#
+
+  U+=phi(:,i)*yr(T); # Reemplazando ya, el dominio temporal y convirtiendolo en numerico.
+  
+  
+endfor
+
+
+aster=dlmread('../codeAster/analisisArmonico/despDY_N2.resu',',',0,0);
+
+figure (1);clf;hold on;grid on;
+
+title ('COMPARACION ASTER-OCTAVE')
+
+N1y=function_handle((-2e5)*t^2);
+
+plot(T,N1y(T),["--" markStyle(1) color(1) ";N1 Octave;"]);
+
+plot(T,U(2,:),["--" markStyle(2) color(2) ";N2 Octave;"]);
+
+plot(aster(1:500,1),aster(1:500,2),["--" markStyle(3) color(3) ";N1 Aster;"]);
+
+plot(aster(1:500,1),aster(1:500,3),["--" markStyle(4) color(4) ";N2 Aster;"]);
+
+hold off
